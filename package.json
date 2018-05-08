@@ -1,6 +1,6 @@
 {
   "name": "gitg",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
     "test": "node build/history-is-empty.js"
   },
