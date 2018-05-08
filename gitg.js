@@ -32,23 +32,23 @@ if (argv.help){
     `
       print current branch
 
-          gitt .
+          gitg .
 
-      show recent branches used. (simply gitt without any parameter)
+      show recent branches used. (simply gitg without any parameter)
 
-         gitt
+         gitg
 
       show all local branches (just like git branch)
 
-         gitt -
+         gitg -
 
        checkout while fuzzy searching (will fall back to interactive search if multiple options)
 
-          gitt some_name
+          gitg some_name
 
       checkout with interatice search (find)
 
-         gitt -f
+         gitg -f
     `
   )
   process.exit(0);

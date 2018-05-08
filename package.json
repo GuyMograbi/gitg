@@ -5,7 +5,7 @@
     "test": "node build/history-is-empty.js"
   },
   "bin": {
-    "gitt": "gitt.js"
+    "gitg": "gitg.js"
   },
   "dependencies": {
     "git-branch-away": "0.0.8",
