@@ -1,0 +1,11 @@
+{
+  "name": "gitt",
+  "version": "0.0.0",
+  "bin":{
+    "gitt": "gitt.js"
+  },
+  "dependencies": {
+    "git-branch-away": "0.0.8",
+    "minimist": "^1.2.0"
+  }
+}
