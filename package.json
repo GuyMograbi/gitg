@@ -1,11 +1,17 @@
 {
   "name": "gitt",
   "version": "0.0.0",
-  "bin":{
+  "scripts": {
+    "test": "node build/history-is-empty.js"
+  },
+  "bin": {
     "gitt": "gitt.js"
   },
   "dependencies": {
     "git-branch-away": "0.0.8",
-    "minimist": "^1.2.0"
+    "inquirer": "^5.2.0",
+    "inquirer-autocomplete-prompt": "^0.12.2",
+    "minimist": "^1.2.0",
+    "shelljs": "^0.8.2"
   }
 }
