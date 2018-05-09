@@ -17,7 +17,9 @@ function printRecentlyUsed(){
 }
 
 function checkout(branch){
-  updateRecentlyUsed(branch);
+  if (branch !== '-'){
+    updateRecentlyUsed(branch);
+  }
   shell.exec(`git checkout ${branch}`);
 }
 
@@ -76,7 +78,7 @@ function find(branches = gitBranches.list().all){
 if (!branch && !argv.f){
   printRecentlyUsed();
 } else if (branch === '-') {
-  console.log(gitBranches.list().all.join('\n'));
+  checkout('-');
 } else if (branch === '.') {
   console.log(gitBranches.list().current);
 } else if (branch) {
