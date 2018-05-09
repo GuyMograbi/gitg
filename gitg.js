@@ -40,9 +40,13 @@ if (argv.help){
 
          gitg
 
-      show all local branches (just like git branch)
+      checkout last branch (just like git checkout -)
 
          gitg -
+
+       checkout searching recently used branches
+
+         gitg --
 
        checkout while fuzzy searching (will fall back to interactive search if multiple options)
 
@@ -79,6 +83,8 @@ if (!branch && !argv.f){
   printRecentlyUsed();
 } else if (branch === '-') {
   checkout('-');
+} else if (branch === '--') {
+  find(getRecentlyUsed());
 } else if (branch === '.') {
   console.log(gitBranches.list().current);
 } else if (branch) {
