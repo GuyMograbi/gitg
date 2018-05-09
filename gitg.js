@@ -8,6 +8,9 @@ var argv = require('minimist')(process.argv.slice(2));
 const recentFilename = path.join(__dirname, 'recent','history.txt');
 const fs = require('fs');
 
+// console.log(argv, process.argv);
+// process.exit(0);
+
 function getRecentlyUsed(){
   return fs.readFileSync(recentFilename).toString().split('\n');
 }
@@ -77,6 +80,9 @@ function find(branches = gitBranches.list().all){
 
 // console.log('args are', argv);
 [branch] = argv._;
+if (!branch && process.argv.indexOf('--') >= 0){
+  branch = '--';
+}
 // console.log('branch is', branch);
 //
 if (!branch && !argv.f){
