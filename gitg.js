@@ -5,34 +5,65 @@ const path = require('path');
 var inquirer = require('inquirer');
 inquirer.registerPrompt('autocomplete', require('inquirer-autocomplete-prompt'));
 var argv = require('minimist')(process.argv.slice(2));
-const recentFilename = path.join(__dirname, 'recent','history.txt');
+
+const crypto = require('crypto');
+const sha1 = (str) => crypto.createHash('sha1').update(str).digest('hex');
+
+gitBranches.init();
+// console.log(gitBranches.root());
+const recentFilename = path.join(__dirname, 'recent', sha1(gitBranches.root()));
+const rootsFilename = path.join(__dirname, 'roots.txt');
+
 const fs = require('fs');
 
 // console.log(argv, process.argv);
 // process.exit(0);
 
-function getRecentlyUsed(){
-  return fs.readFileSync(recentFilename).toString().split('\n');
+function getRecentlyUsed () {
+  try {
+    return fs.readFileSync(recentFilename).toString().split('\n');
+  } catch (e) {
+    return [];
+  }
 }
 
-function printRecentlyUsed(){
+function updateRoot (root) {
+  let roots = getRoots();
+  roots = [root, ...roots.filter(r => r !== root)];
+  fs.writeFileSync(rootsFilename, roots.join('\n'));
+}
+
+function getRoots () {
+  try {
+    return fs.readFileSync(rootsFilename).toString().split('\n');
+  } catch (e) {
+    return [];
+  }
+}
+
+function printRecentlyUsed () {
   console.log(getRecentlyUsed().join('\n'));
 }
 
-function checkout(branch){
-  if (branch !== '-'){
+function printRoots () {
+  console.log(getRoots().join('\n'));
+}
+
+function checkout (branch) {
+  if (branch !== '-') {
     updateRecentlyUsed(branch);
+    updateRoot(gitBranches.root());
   }
   shell.exec(`git checkout ${branch}`);
 }
 
-function updateRecentlyUsed(branch){
+function updateRecentlyUsed (branch) {
   let recent = getRecentlyUsed();
-  recent = [branch, ...recent.filter(r=>r!== branch)];
+  recent = [branch, ...recent.filter(r => r !== branch)];
   fs.writeFileSync(recentFilename, recent.join('\n'));
 }
 
-if (argv.help){
+if (argv.help) {
   console.log(
     `
       print current branch
@@ -59,46 +90,47 @@ if (argv.help){
 
          gitg -f
     `
-  )
+  );
   process.exit(0);
 }
 
-function find(branches = gitBranches.list().all){
-
+function find (branches = gitBranches.list().all) {
   inquirer.prompt([
     {
-    type: 'autocomplete',
-    name: 'branch',
-    message: 'start typing to search your branch',
-    // source: (answers, input) => ['mouse', 'house']
-    source: (answers, input) => Promise.resolve(input ? branches.filter((b) => b.includes(input)) : branches)
-  },
-]).then(answers=>{
-  checkout(answers.branch);
-});
+      type: 'autocomplete',
+      name: 'branch',
+      message: 'start typing to search your branch',
+      // source: (answers, input) => ['mouse', 'house']
+      source: (answers, input) => Promise.resolve(input ? branches.filter((b) => b.includes(input)) : branches)
+    }
+  ]).then(answers => {
+    checkout(answers.branch);
+  });
 }
 
 // console.log('args are', argv);
-[branch] = argv._;
-if (!branch && process.argv.indexOf('--') >= 0){
+let [branch] = argv._;
+if (!branch && process.argv.indexOf('--') >= 0) {
   branch = '--';
 }
 // console.log('branch is', branch);
 //
-if (!branch && !argv.f){
+if (!branch && !argv.f) {
   printRecentlyUsed();
 } else if (branch === '-') {
   checkout('-');
 } else if (branch === '--') {
   find(getRecentlyUsed());
+} else if (branch === '@') {
+  printRoots();
 } else if (branch === '.') {
   console.log(gitBranches.list().current);
 } else if (branch) {
-  const matches = gitBranches.list().all.filter(b=>b.indexOf(branch) >= 0);
+  const matches = gitBranches.list().all.filter(b => b.indexOf(branch) >= 0);
   console.log('matches are', matches);
-  if (matches.length === 1){
+  if (matches.length === 1) {
     checkout(matches[0]);
-  } else if (matches.length === 0){
+  } else if (matches.length === 0) {
     console.log('no matches found. lets help you find it');
     find();
   } else {
@@ -108,5 +140,4 @@ if (!branch && !argv.f){
 } else if (argv.f) {
   find();
 }
-if (argv._[0])
-gitBranches.list();
+if (argv._[0]) { gitBranches.list(); }
