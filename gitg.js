@@ -109,7 +109,13 @@ function find (branches = gitBranches.list().all) {
       name: 'branch',
       message: 'start typing to search your branch',
       // source: (answers, input) => ['mouse', 'house']
-      source: (answers, input) => Promise.resolve(input ? branches.filter((b) => b.includes(input)) : branches)
+      source: (answers, input) => {
+        let results = input ? branches.filter((b) => b.includes(input)) : branches;
+        if (results.length === 0) {
+          results = gitBranches.all().filter(b=>b.includes(input));
+        }
+        return Promise.resolve(results);
+      }
     }
   ]).then(answers => {
     checkout(answers.branch);
