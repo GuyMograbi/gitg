@@ -1,10 +1,12 @@
 #!/usr/bin/env node
+var argv = require('minimist')(process.argv.slice(2));
+const fs = require('fs');
 const gitBranches = require('git-branch-away');
 var shell = require('shelljs');
 const path = require('path');
 var inquirer = require('inquirer');
 inquirer.registerPrompt('autocomplete', require('inquirer-autocomplete-prompt'));
-var argv = require('minimist')(process.argv.slice(2));
+
 
 const crypto = require('crypto');
 const sha1 = (str) => crypto.createHash('sha1').update(str).digest('hex');
@@ -14,10 +16,16 @@ gitBranches.init();
 const recentFilename = path.join(__dirname, 'recent', sha1(gitBranches.root()));
 const rootsFilename = path.join(__dirname, 'roots.txt');
 
-const fs = require('fs');
-
 // console.log(argv, process.argv);
 // process.exit(0);
+//
+if (gitBranches.current()){
+  updateRecentlyUsed(gitBranches.current());
+}
+if (argv.version){
+  console.log(require('./package.json').version);
+  process.exit(1);
+}
 
 function getRecentlyUsed () {
   try {

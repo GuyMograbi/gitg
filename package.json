@@ -8,7 +8,7 @@
     "gitg": "gitg.js"
   },
   "dependencies": {
-    "git-branch-away": "0.0.13",
+    "git-branch-away": "0.0.14",
     "inquirer": "^5.2.0",
     "inquirer-autocomplete-prompt": "^0.12.2",
     "minimist": "^1.2.0",
