@@ -57,12 +57,12 @@ function printRoots () {
   console.log(getRoots().join('\n'));
 }
 
-function checkout (branch) {
+function checkout (branch, newBranch=false) {
   if (branch !== '-') {
     updateRecentlyUsed(branch);
     updateRoot(gitBranches.root());
   }
-  shell.exec(`git checkout ${branch}`);
+  shell.exec(`git checkout ${newBranch ? '-b': ''} ${branch}`);
 }
 
 function updateRecentlyUsed (branch) {
@@ -128,7 +128,11 @@ if (!branch && process.argv.indexOf('--') >= 0) {
   branch = '--';
 }
 // console.log('branch is', branch);
-//
+
+if (argv.b) {
+  checkout(argv.b, true);
+  process.exit(0);
+}
 if (!branch && !argv.f) {
   printRecentlyUsed();
 } else if (branch === '-') {
