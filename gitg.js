@@ -135,7 +135,7 @@ if (!branch && !argv.f) {
   console.log(gitBranches.list().current);
 } else if (branch) {
   const matches = gitBranches.list().all.filter(b => b.indexOf(branch) >= 0);
-  console.log('matches are', matches);
+  // console.log('matches are', matches);
   if (matches.length === 1) {
     checkout(matches[0]);
   } else if (matches.length === 0) {
