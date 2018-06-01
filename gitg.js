@@ -130,6 +130,15 @@ if (!branch && process.argv.indexOf('--') >= 0) {
 // console.log('branch is', branch);
 
 if (argv.b) {
+  const {ahead, behind} = gitBranches.getCommitsDiff();
+  if (behind && behind > 0){
+    if (!argv.force){
+      console.error(`your branch is behind by ${behind} commits. update and try again or use --force`);
+      process.exit(1);
+    } else {
+      console.warn(`your branch is behind by ${behind} commits. update and try again or use --force`);
+    }
+  }
   checkout(argv.b, true);
   process.exit(0);
 }
