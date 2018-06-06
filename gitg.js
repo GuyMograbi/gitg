@@ -153,16 +153,22 @@ if (!branch && !argv.f) {
 } else if (branch === '.') {
   console.log(gitBranches.list().current);
 } else if (branch) {
-  const matches = gitBranches.list().all.filter(b => b.indexOf(branch) >= 0);
-  // console.log('matches are', matches);
-  if (matches.length === 1) {
-    checkout(matches[0]);
-  } else if (matches.length === 0) {
-    console.log('no matches found. lets help you find it');
-    find();
+  const allBranches = gitBranches.list().all;
+  const perfectMatch = allBranches.filter(b => b === branch);
+  if (perfectMatch){
+    checkout(perfectMatch);
   } else {
-    console.log('multiple options found.');
-    find(matches);
+    const matches = allBranches.filter(b => b.indexOf(branch) >= 0);
+    // console.log('matches are', matches);
+    if (matches.length === 1) {
+      checkout(matches[0]);
+    } else if (matches.length === 0) {
+      console.log('no matches found. lets help you find it');
+      find();
+    } else {
+      console.log('multiple options found.');
+      find(matches);
+    }
   }
 } else if (argv.f) {
   find();
