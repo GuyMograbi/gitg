@@ -161,7 +161,7 @@ if (!branch && !argv.f) {
   console.log(gitBranches.list().current);
 } else if (branch) {
   const allBranches = gitBranches.list().all;
-  const perfectMatch = allBranches.filter(b => b === branch);
+  const perfectMatch = allBranches.filter(b => b === branch)[0];
   if (perfectMatch){
     checkout(perfectMatch);
   } else {
