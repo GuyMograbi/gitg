@@ -3,6 +3,7 @@ var argv = require('minimist')(process.argv.slice(2));
 const fs = require('fs');
 const gitBranches = require('git-branch-away');
 var shell = require('shelljs');
+const _ = require('lodash');
 const path = require('path');
 var inquirer = require('inquirer');
 inquirer.registerPrompt('autocomplete', require('inquirer-autocomplete-prompt'));
@@ -36,14 +37,15 @@ function getRecentlyUsed () {
 }
 
 function updateRoot (root) {
+  root = root.trim();
   let roots = getRoots();
-  roots = [root, ...roots.filter(r => r !== root)];
+  roots = _.uniq([root, ...roots]).map(r => r.trim()).filter(r => r.length > 0);
   fs.writeFileSync(rootsFilename, roots.join('\n'));
 }
 
 function getRoots () {
   try {
-    return fs.readFileSync(rootsFilename).toString().split('\n');
+    return _.uniq(fs.readFileSync(rootsFilename).toString().split('\n').map(l=>l.trim()).filter(l=>l.length>0));
   } catch (e) {
     return [];
   }
@@ -97,6 +99,11 @@ if (argv.help) {
       checkout with interatice search (find)
 
          gitg -f
+
+      print all repo roots you visited
+
+         gitg @
+
     `
   );
   process.exit(0);
