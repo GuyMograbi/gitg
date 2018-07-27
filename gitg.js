@@ -12,17 +12,24 @@ inquirer.registerPrompt('autocomplete', require('inquirer-autocomplete-prompt'))
 const crypto = require('crypto');
 const sha1 = (str) => crypto.createHash('sha1').update(str).digest('hex');
 
-gitBranches.init();
+const init = () => {
+  if (!gitBranches.isRepository()) {
+    console.error('not a git repository');
+    process.exit(1);
+  }
+  gitBranches.init();
+  if (gitBranches.current()){
+    updateRecentlyUsed(gitBranches.current());
+  }``
+}
 // console.log(gitBranches.root());
-const recentFilename = path.join(__dirname, 'recent', sha1(gitBranches.root()));
-const rootsFilename = path.join(__dirname, 'roots.txt');
+const recentFilename = () => path.join(__dirname, 'recent', sha1(gitBranches.root()));
+const rootsFilename = () => path.join(__dirname, 'roots.txt');
 
 // console.log(argv, process.argv);
 // process.exit(0);
 //
-if (gitBranches.current()){
-  updateRecentlyUsed(gitBranches.current());
-}
+
 if (argv.version){
   console.log(require('./package.json').version);
   process.exit(1);
@@ -30,7 +37,7 @@ if (argv.version){
 
 function getRecentlyUsed () {
   try {
-    return fs.readFileSync(recentFilename).toString().split('\n');
+    return fs.readFileSync(recentFilename()).toString().split('\n');
   } catch (e) {
     return [];
   }
@@ -40,12 +47,12 @@ function updateRoot (root) {
   root = root.trim();
   let roots = getRoots();
   roots = _.uniq([root, ...roots]).map(r => r.trim()).filter(r => r.length > 0);
-  fs.writeFileSync(rootsFilename, roots.join('\n'));
+  fs.writeFileSync(rootsFilename(), roots.join('\n'));
 }
 
 function getRoots () {
   try {
-    return _.uniq(fs.readFileSync(rootsFilename).toString().split('\n').map(l=>l.trim()).filter(l=>l.length>0));
+    return _.uniq(fs.readFileSync(rootsFilename()).toString().split('\n').map(l=>l.trim()).filter(l=>l.length>0));
   } catch (e) {
     return [];
   }
@@ -70,7 +77,7 @@ function checkout (branch, newBranch=false) {
 function updateRecentlyUsed (branch) {
   let recent = getRecentlyUsed();
   recent = [branch, ...recent.filter(r => r !== branch)];
-  fs.writeFileSync(recentFilename, recent.join('\n'));
+  fs.writeFileSync(recentFilename(), recent.join('\n'));
 }
 
 if (argv.help) {
@@ -131,53 +138,56 @@ function find (branches = gitBranches.list().all) {
 
 // console.log('args are', argv);
 let [branch] = argv._;
-if (!branch && process.argv.indexOf('--') >= 0) {
-  branch = '--';
-}
-// console.log('branch is', branch);
-
-if (argv.b) {
-  const {ahead, behind} = gitBranches.getCommitsDiff();
-  if (behind && behind > 0){
-    if (!argv.force){
-      console.error(`your branch is behind by ${behind} commits. update and try again or use --force`);
-      process.exit(1);
-    } else {
-      console.warn(`your branch is behind by ${behind} commits. update and try again or use --force`);
-    }
-  }
-  checkout(argv.b, true);
-  process.exit(0);
-}
-if (!branch && !argv.f) {
-  printRecentlyUsed();
-} else if (branch === '-') {
-  checkout('-');
-} else if (branch === '--') {
-  find(getRecentlyUsed());
-} else if (branch === '@') {
+if (branch === '@') {
   printRoots();
-} else if (branch === '.') {
-  console.log(gitBranches.list().current);
-} else if (branch) {
-  const allBranches = gitBranches.list().all;
-  const perfectMatch = allBranches.filter(b => b === branch)[0];
-  if (perfectMatch){
-    checkout(perfectMatch);
-  } else {
-    const matches = allBranches.filter(b => b.indexOf(branch) >= 0);
-    // console.log('matches are', matches);
-    if (matches.length === 1) {
-      checkout(matches[0]);
-    } else if (matches.length === 0) {
-      console.log('no matches found. lets help you find it');
-      find();
-    } else {
-      console.log('multiple options found.');
-      find(matches);
-    }
+} else {
+  init();
+  if (!branch && process.argv.indexOf('--') >= 0) {
+    branch = '--';
   }
-} else if (argv.f) {
-  find();
+  // console.log('branch is', branch);
+
+  if (argv.b) {
+    const {ahead, behind} = gitBranches.getCommitsDiff();
+    if (behind && behind > 0){
+      if (!argv.force){
+        console.error(`your branch is behind by ${behind} commits. update and try again or use --force`);
+        process.exit(1);
+      } else {
+        console.warn(`your branch is behind by ${behind} commits. update and try again or use --force`);
+      }
+    }
+    checkout(argv.b, true);
+    process.exit(0);
+  }
+  if (!branch && !argv.f) {
+    printRecentlyUsed();
+  } else if (branch === '-') {
+    checkout('-');
+  } else if (branch === '--') {
+    find(getRecentlyUsed());
+  } else if (branch === '.') {
+    console.log(gitBranches.list().current);
+  } else if (branch) {
+    const allBranches = gitBranches.list().all;
+    const perfectMatch = allBranches.filter(b => b === branch)[0];
+    if (perfectMatch){
+      checkout(perfectMatch);
+    } else {
+      const matches = allBranches.filter(b => b.indexOf(branch) >= 0);
+      // console.log('matches are', matches);
+      if (matches.length === 1) {
+        checkout(matches[0]);
+      } else if (matches.length === 0) {
+        console.log('no matches found. lets help you find it');
+        find();
+      } else {
+        console.log('multiple options found.');
+        find(matches);
+      }
+    }
+  } else if (argv.f) {
+    find();
+  }
+  if (argv._[0]) { gitBranches.list(); }
 }
-if (argv._[0]) { gitBranches.list(); }
