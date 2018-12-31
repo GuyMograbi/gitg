@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 var argv = require('minimist')(process.argv.slice(2));
-const fs = require('fs');
+const fs = require('fs-extra');
 const gitBranches = require('git-branch-away');
 var shell = require('shelljs');
 const _ = require('lodash');
