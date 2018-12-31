@@ -77,6 +77,7 @@ function checkout (branch, newBranch=false) {
 function updateRecentlyUsed (branch) {
   let recent = getRecentlyUsed();
   recent = [branch, ...recent.filter(r => r !== branch)];
+  fs.ensureFileSync(recentFilename());
   fs.writeFileSync(recentFilename(), recent.join('\n'));
 }
 
