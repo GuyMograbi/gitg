@@ -58,6 +58,10 @@ function getRoots () {
   }
 }
 
+function emptyCommit () {
+  shell.exec(`git commit --allow-empty -m "empty commit"`);
+}
+
 function printRecentlyUsed () {
   console.log(getRecentlyUsed().join('\n'));
 }
@@ -104,13 +108,17 @@ if (argv.help) {
 
           gitg some_name
 
-      checkout with interatice search (find)
+      checkout with interactive search (find)
 
          gitg -f
 
       print all repo roots you visited
 
          gitg @
+
+      create empty commit
+
+         gitg !
 
     `
   );
@@ -139,7 +147,9 @@ function find (branches = gitBranches.list().all) {
 
 // console.log('args are', argv);
 let [branch] = argv._;
-if (branch === '@') {
+if (branch === '!') {
+  emptyCommit();
+} else if (branch === '@') {
   printRoots();
 } else {
   init();
