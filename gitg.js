@@ -59,7 +59,7 @@ function getRoots () {
 }
 
 function emptyCommit () {
-  shell.exec(`git commit --allow-empty -m "empty commit"`);
+  shell.exec(`git commit --allow-empty -n -m "empty commit"`);
 }
 
 function printRecentlyUsed () {
