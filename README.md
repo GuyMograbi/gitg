@@ -61,3 +61,13 @@ gitg-alias --open
 
 gitg-alias --version
 ```
+
+
+
+TODO
+
+Add better branch history
+
+```
+for-each-ref --sort=-committerdate --count=15 refs/heads/ --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(color:red)%(objectname:short)%(color:reset) - %(contents:subject) - %(authorname) (%(color:green)%(committerdate:relative)%(color:reset))'
+```
