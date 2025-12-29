@@ -6,6 +6,7 @@ var shell = require('shelljs');
 const _ = require('lodash');
 const path = require('path');
 var inquirer = require('inquirer');
+const { getContributionStats } = require('./gitg-stats');
 inquirer.registerPrompt('autocomplete', require('inquirer-autocomplete-prompt'));
 
 
@@ -120,6 +121,11 @@ if (argv.help) {
 
          gitg !
 
+      show contribution statistics (daily and hourly breakdown)
+
+         gitg stat
+         gitg stat --email=user@example.com
+
     `
   );
   process.exit(0);
@@ -145,12 +151,17 @@ function find (branches = gitBranches.list().all) {
   });
 }
 
+
 // console.log('args are', argv);
 let [branch] = argv._;
 if (branch === '!') {
   emptyCommit();
 } else if (branch === '@') {
   printRoots();
+} else if (branch === 'stat') {
+  init();
+  getContributionStats(argv.email);
+  process.exit(0);
 } else {
   init();
   if (!branch && process.argv.indexOf('--') >= 0) {

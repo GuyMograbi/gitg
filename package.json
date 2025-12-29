@@ -9,6 +9,7 @@
     "gitg-alias": "gitg-alias.js"
   },
   "dependencies": {
+    "chalk": "^4.1.2",
     "find-up": "^3.0.0",
     "fs-extra": "^7.0.0",
     "git-branch-away": "0.0.16",
