@@ -11,52 +11,90 @@ function getUserEmail() {
 }
 
 function getStatsForDate(email, date, timezone) {
-  const tzEnv = timezone ? `TZ=${timezone} ` : '';
-
-  // Get commit count
-  const commitCountCmd = `${tzEnv}git log --all --author="${email}" --since="${date} 00:00:00" --until="${date} 23:59:59" --pretty=oneline`;
-  const commitResult = shell.exec(commitCountCmd, { silent: true });
-  const commits = commitResult.code === 0 ? commitResult.stdout.trim().split('\n').filter(line => line.trim()).length : 0;
-
-  // Get line stats
-  const gitLogCmd = `${tzEnv}git log --all --author="${email}" --since="${date} 00:00:00" --until="${date} 23:59:59" --pretty=tformat: --numstat`;
+  // Get commits with ISO 8601 timestamps (includes timezone info)
+  const gitLogCmd = `git log --all --author="${email}" --since="${date} 00:00:00" --until="${date} 23:59:59" --pretty=format:"%ai|%H" --numstat`;
   const logResult = shell.exec(gitLogCmd, { silent: true });
   if (logResult.code !== 0) return { added: 0, removed: 0, net: 0, commits: 0 };
 
-  const stats = logResult.stdout.split('\n')
-    .filter(line => line.trim())
-    .reduce((acc, line) => {
-      const parts = line.trim().split(/\s+/);
-      const added = parseInt(parts[0], 10) || 0;
-      const removed = parseInt(parts[1], 10) || 0;
-      return {
-        added: acc.added + added,
-        removed: acc.removed + removed
-      };
-    }, { added: 0, removed: 0 });
+  const lines = logResult.stdout.split('\n');
+  let commits = 0;
+  let added = 0;
+  let removed = 0;
+  let inTargetDate = false;
 
-  return { ...stats, net: stats.added - stats.removed, commits };
+  for (const line of lines) {
+    if (line.includes('|')) {
+      // Commit header: "2025-12-30 00:08:37 +0000|hash"
+      const timestampStr = line.split('|')[0];
+      const commitDate = new Date(timestampStr);
+
+      // Convert to target timezone and extract date
+      let dateInTargetTz;
+      if (timezone) {
+        dateInTargetTz = commitDate.toLocaleString('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).split(',')[0];
+      } else {
+        dateInTargetTz = commitDate.toISOString().split('T')[0];
+      }
+
+      inTargetDate = (dateInTargetTz === date);
+      if (inTargetDate) {
+        commits++;
+      }
+    } else if (inTargetDate && line.trim()) {
+      // Numstat line for a commit in target date
+      const parts = line.trim().split(/\s+/);
+      const addedLines = parseInt(parts[0], 10) || 0;
+      const removedLines = parseInt(parts[1], 10) || 0;
+      added += addedLines;
+      removed += removedLines;
+    }
+  }
+
+  return { added, removed, net: added - removed, commits };
 }
 
-function getStatsForHour(email, hourStr, timezone) {
-  const tzEnv = timezone ? `TZ=${timezone} ` : '';
-  const gitLogCmd = `${tzEnv}git log --all --author="${email}" --since="today ${hourStr}:00:00" --until="today ${hourStr}:59:59" --pretty=tformat: --numstat`;
+function getStatsForHour(email, hourStr, timezone, targetDate) {
+  // Get commits with ISO 8601 timestamps
+  const gitLogCmd = `git log --all --author="${email}" --since="today ${hourStr}:00:00" --until="today ${hourStr}:59:59" --pretty=format:"%ai|%H" --numstat`;
   const logResult = shell.exec(gitLogCmd, { silent: true });
   if (logResult.code !== 0) return { added: 0, removed: 0 };
 
-  const stats = logResult.stdout.split('\n')
-    .filter(line => line.trim())
-    .reduce((acc, line) => {
-      const parts = line.trim().split(/\s+/);
-      const added = parseInt(parts[0], 10) || 0;
-      const removed = parseInt(parts[1], 10) || 0;
-      return {
-        added: acc.added + added,
-        removed: acc.removed + removed
-      };
-    }, { added: 0, removed: 0 });
+  const lines = logResult.stdout.split('\n');
+  let added = 0;
+  let removed = 0;
+  let inTargetHour = false;
 
-  return stats;
+  for (const line of lines) {
+    if (line.includes('|')) {
+      // Commit header with timestamp
+      const timestampStr = line.split('|')[0];
+      const commitDate = new Date(timestampStr);
+
+      // Convert to target timezone and extract date and hour
+      let dateTimeInTargetTz;
+      if (timezone) {
+        const dateStr = commitDate.toLocaleString('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).split(',')[0];
+        const hour = commitDate.toLocaleString('en-US', { timeZone: timezone, hour: '2-digit', hour12: false }).padStart(2, '0');
+        dateTimeInTargetTz = `${dateStr}-${hour}`;
+      } else {
+        const isoStr = commitDate.toISOString();
+        const dateStr = isoStr.split('T')[0];
+        const hour = isoStr.split('T')[1].substring(0, 2);
+        dateTimeInTargetTz = `${dateStr}-${hour}`;
+      }
+
+      inTargetHour = (dateTimeInTargetTz === `${targetDate}-${hourStr}`);
+    } else if (inTargetHour && line.trim()) {
+      // Numstat line
+      const parts = line.trim().split(/\s+/);
+      const addedLines = parseInt(parts[0], 10) || 0;
+      const removedLines = parseInt(parts[1], 10) || 0;
+      added += addedLines;
+      removed += removedLines;
+    }
+  }
+
+  return { added, removed };
 }
 
 function calculateDailyTrend(currentAdded, previousAdded) {
@@ -83,13 +121,13 @@ function getContributionStats(customEmail, timezone) {
 
   // Collect daily data
   const dailyData = [];
+  const execOptions = timezone ? { silent: true, env: { ...process.env, TZ: timezone } } : { silent: true };
   for (let i = 30; i >= 0; i--) {
-    const tzEnv = timezone ? `TZ=${timezone} ` : '';
     const dateCmd = process.platform === 'darwin'
-      ? `${tzEnv}date -v-${i}d +%Y-%m-%d`
-      : `${tzEnv}date -d "${i} days ago" +%Y-%m-%d`;
+      ? `date -v-${i}d +%Y-%m-%d`
+      : `date -d "${i} days ago" +%Y-%m-%d`;
 
-    const dateResult = shell.exec(dateCmd, { silent: true });
+    const dateResult = shell.exec(dateCmd, execOptions);
     if (dateResult.code !== 0) continue;
 
     const date = dateResult.stdout.trim();
@@ -200,10 +238,19 @@ function getContributionStats(customEmail, timezone) {
   // Hourly breakdown
   console.log(chalk.bold('\n=== Hourly Breakdown (Today) ===\n'));
 
+  // Get today's date in target timezone
+  const now = new Date();
+  let today;
+  if (timezone) {
+    today = now.toLocaleString('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).split(',')[0];
+  } else {
+    today = now.toISOString().split('T')[0];
+  }
+
   const hourlyData = [];
   for (let hour = 0; hour < 24; hour++) {
     const hourStr = hour.toString().padStart(2, '0');
-    const stats = getStatsForHour(email, hourStr, timezone);
+    const stats = getStatsForHour(email, hourStr, timezone, today);
 
     if (stats.added > 0 || stats.removed > 0) {
       hourlyData.push({ hour: hourStr, ...stats });
