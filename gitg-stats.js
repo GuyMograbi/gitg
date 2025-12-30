@@ -10,9 +10,9 @@ function getUserEmail() {
   return result.stdout.trim();
 }
 
-function getStatsForDate(email, date, timezone) {
-  // Get commits with ISO 8601 timestamps (includes timezone info)
-  const gitLogCmd = `git log --all --author="${email}" --since="${date} 00:00:00" --until="${date} 23:59:59" --pretty=format:"%ai|%H" --numstat`;
+function getStatsForDate(email, date, timezone, sinceFilter) {
+  // Get commits with unix timestamps
+  const gitLogCmd = `git log --all --author="${email}" --since="${sinceFilter}" --pretty=format:"%at|%H" --numstat`;
   const logResult = shell.exec(gitLogCmd, { silent: true });
   if (logResult.code !== 0) return { added: 0, removed: 0, net: 0, commits: 0 };
 
@@ -24,17 +24,18 @@ function getStatsForDate(email, date, timezone) {
 
   for (const line of lines) {
     if (line.includes('|')) {
-      // Commit header: "2025-12-30 00:08:37 +0000|hash"
-      const timestampStr = line.split('|')[0];
-      const commitDate = new Date(timestampStr);
+      // Commit header: "1735516117|hash" (unix timestamp)
+      const unixTimestamp = parseInt(line.split('|')[0], 10);
+      const commitDate = new Date(unixTimestamp * 1000);
 
       // Convert to target timezone and extract date
-      let dateInTargetTz;
-      if (timezone) {
-        dateInTargetTz = commitDate.toLocaleString('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).split(',')[0];
-      } else {
-        dateInTargetTz = commitDate.toISOString().split('T')[0];
-      }
+      // If no timezone specified, toLocaleString uses system timezone
+      const dateInTargetTz = commitDate.toLocaleString('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).split(',')[0];
 
       inTargetDate = (dateInTargetTz === date);
       if (inTargetDate) {
@@ -54,8 +55,8 @@ function getStatsForDate(email, date, timezone) {
 }
 
 function getStatsForHour(email, hourStr, timezone, targetDate) {
-  // Get commits with ISO 8601 timestamps
-  const gitLogCmd = `git log --all --author="${email}" --since="today ${hourStr}:00:00" --until="today ${hourStr}:59:59" --pretty=format:"%ai|%H" --numstat`;
+  // Get commits with unix timestamps
+  const gitLogCmd = `git log --all --author="${email}" --since="24 hours ago" --pretty=format:"%at|%H" --numstat`;
   const logResult = shell.exec(gitLogCmd, { silent: true });
   if (logResult.code !== 0) return { added: 0, removed: 0 };
 
@@ -66,22 +67,24 @@ function getStatsForHour(email, hourStr, timezone, targetDate) {
 
   for (const line of lines) {
     if (line.includes('|')) {
-      // Commit header with timestamp
-      const timestampStr = line.split('|')[0];
-      const commitDate = new Date(timestampStr);
+      // Commit header: "1735516117|hash" (unix timestamp)
+      const unixTimestamp = parseInt(line.split('|')[0], 10);
+      const commitDate = new Date(unixTimestamp * 1000);
 
       // Convert to target timezone and extract date and hour
-      let dateTimeInTargetTz;
-      if (timezone) {
-        const dateStr = commitDate.toLocaleString('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).split(',')[0];
-        const hour = commitDate.toLocaleString('en-US', { timeZone: timezone, hour: '2-digit', hour12: false }).padStart(2, '0');
-        dateTimeInTargetTz = `${dateStr}-${hour}`;
-      } else {
-        const isoStr = commitDate.toISOString();
-        const dateStr = isoStr.split('T')[0];
-        const hour = isoStr.split('T')[1].substring(0, 2);
-        dateTimeInTargetTz = `${dateStr}-${hour}`;
-      }
+      // If no timezone specified, toLocaleString uses system timezone
+      const dateStr = commitDate.toLocaleString('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).split(',')[0];
+      const hour = commitDate.toLocaleString('en-US', {
+        timeZone: timezone,
+        hour: '2-digit',
+        hour12: false
+      }).padStart(2, '0');
+      const dateTimeInTargetTz = `${dateStr}-${hour}`;
 
       inTargetHour = (dateTimeInTargetTz === `${targetDate}-${hourStr}`);
     } else if (inTargetHour && line.trim()) {
@@ -131,7 +134,7 @@ function getContributionStats(customEmail, timezone) {
     if (dateResult.code !== 0) continue;
 
     const date = dateResult.stdout.trim();
-    const stats = getStatsForDate(email, date, timezone);
+    const stats = getStatsForDate(email, date, timezone, "30 days ago");
 
     dailyData.push({ date, ...stats });
   }
@@ -239,13 +242,14 @@ function getContributionStats(customEmail, timezone) {
   console.log(chalk.bold('\n=== Hourly Breakdown (Today) ===\n'));
 
   // Get today's date in target timezone
+  // If no timezone specified, toLocaleString uses system timezone
   const now = new Date();
-  let today;
-  if (timezone) {
-    today = now.toLocaleString('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).split(',')[0];
-  } else {
-    today = now.toISOString().split('T')[0];
-  }
+  const today = now.toLocaleString('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).split(',')[0];
 
   const hourlyData = [];
   for (let hour = 0; hour < 24; hour++) {
