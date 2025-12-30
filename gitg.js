@@ -125,6 +125,8 @@ if (argv.help) {
 
          gitg stat
          gitg stat --email=user@example.com
+         gitg stat --email=user@example.com --timezone=PST
+         gitg stat --timezone=America/Los_Angeles
 
     `
   );
@@ -160,7 +162,7 @@ if (branch === '!') {
   printRoots();
 } else if (branch === 'stat') {
   init();
-  getContributionStats(argv.email);
+  getContributionStats(argv.email, argv.timezone);
   process.exit(0);
 } else {
   init();

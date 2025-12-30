@@ -10,14 +10,16 @@ function getUserEmail() {
   return result.stdout.trim();
 }
 
-function getStatsForDate(email, date) {
+function getStatsForDate(email, date, timezone) {
+  const tzEnv = timezone ? `TZ=${timezone} ` : '';
+
   // Get commit count
-  const commitCountCmd = `git log --all --author="${email}" --since="${date} 00:00:00" --until="${date} 23:59:59" --pretty=oneline`;
+  const commitCountCmd = `${tzEnv}git log --all --author="${email}" --since="${date} 00:00:00" --until="${date} 23:59:59" --pretty=oneline`;
   const commitResult = shell.exec(commitCountCmd, { silent: true });
   const commits = commitResult.code === 0 ? commitResult.stdout.trim().split('\n').filter(line => line.trim()).length : 0;
 
   // Get line stats
-  const gitLogCmd = `git log --all --author="${email}" --since="${date} 00:00:00" --until="${date} 23:59:59" --pretty=tformat: --numstat`;
+  const gitLogCmd = `${tzEnv}git log --all --author="${email}" --since="${date} 00:00:00" --until="${date} 23:59:59" --pretty=tformat: --numstat`;
   const logResult = shell.exec(gitLogCmd, { silent: true });
   if (logResult.code !== 0) return { added: 0, removed: 0, net: 0, commits: 0 };
 
@@ -36,8 +38,9 @@ function getStatsForDate(email, date) {
   return { ...stats, net: stats.added - stats.removed, commits };
 }
 
-function getStatsForHour(email, hourStr) {
-  const gitLogCmd = `git log --all --author="${email}" --since="today ${hourStr}:00:00" --until="today ${hourStr}:59:59" --pretty=tformat: --numstat`;
+function getStatsForHour(email, hourStr, timezone) {
+  const tzEnv = timezone ? `TZ=${timezone} ` : '';
+  const gitLogCmd = `${tzEnv}git log --all --author="${email}" --since="today ${hourStr}:00:00" --until="today ${hourStr}:59:59" --pretty=tformat: --numstat`;
   const logResult = shell.exec(gitLogCmd, { silent: true });
   if (logResult.code !== 0) return { added: 0, removed: 0 };
 
@@ -73,22 +76,24 @@ function calculateDailyTrend(currentAdded, previousAdded) {
   return { trend: trendStr, color: chalk.yellow };
 }
 
-function getContributionStats(customEmail) {
+function getContributionStats(customEmail, timezone) {
   const email = customEmail || getUserEmail();
-  console.log(chalk.bold.cyan(`\n📊 Contribution Statistics for: ${email}\n`));
+  const tzInfo = timezone ? ` (${timezone})` : '';
+  console.log(chalk.bold.cyan(`\n📊 Contribution Statistics for: ${email}${tzInfo}\n`));
 
   // Collect daily data
   const dailyData = [];
   for (let i = 30; i >= 0; i--) {
+    const tzEnv = timezone ? `TZ=${timezone} ` : '';
     const dateCmd = process.platform === 'darwin'
-      ? `date -v-${i}d +%Y-%m-%d`
-      : `date -d "${i} days ago" +%Y-%m-%d`;
+      ? `${tzEnv}date -v-${i}d +%Y-%m-%d`
+      : `${tzEnv}date -d "${i} days ago" +%Y-%m-%d`;
 
     const dateResult = shell.exec(dateCmd, { silent: true });
     if (dateResult.code !== 0) continue;
 
     const date = dateResult.stdout.trim();
-    const stats = getStatsForDate(email, date);
+    const stats = getStatsForDate(email, date, timezone);
 
     dailyData.push({ date, ...stats });
   }
@@ -198,7 +203,7 @@ function getContributionStats(customEmail) {
   const hourlyData = [];
   for (let hour = 0; hour < 24; hour++) {
     const hourStr = hour.toString().padStart(2, '0');
-    const stats = getStatsForHour(email, hourStr);
+    const stats = getStatsForHour(email, hourStr, timezone);
 
     if (stats.added > 0 || stats.removed > 0) {
       hourlyData.push({ hour: hourStr, ...stats });
